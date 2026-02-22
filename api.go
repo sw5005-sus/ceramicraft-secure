@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/sw5005-sus/ceramicraft-secure/enc"
+	"github.com/sw5005-sus/ceramicraft-secure/sign"
 	"github.com/sw5005-sus/ceramicraft-secure/vault"
 )
 
@@ -14,11 +15,14 @@ func Init() {
 	keyManager = vault.GetKeyManager()
 }
 
-const aesKeyName = "aes_key"
+const (
+	aesKeyName  = "aes_key"
+	hmacKeyName = "hmac_key"
+)
 
 func AesEncrypt(plainText string) (string, error) {
 	version := keyManager.GetLatestVersion()
-	aesKey, err := getAesKey(version)
+	aesKey, err := getKey(aesKeyName, version)
 	if err != nil {
 		return "", err
 	}
@@ -37,7 +41,7 @@ func AesDecrypt(cipherText string) (string, error) {
 		return "", fmt.Errorf("invalid ciphertext format: %w", err)
 	}
 
-	aesKey, err := getAesKey(version)
+	aesKey, err := getKey(aesKeyName, version)
 	if err != nil {
 		return "", err
 	}
@@ -48,8 +52,33 @@ func AesDecrypt(cipherText string) (string, error) {
 	return string(plainBytes), nil
 }
 
-func getAesKey(version int) ([]byte, error) {
-	aesKeyHex, err := keyManager.GetSecConfigByKey(aesKeyName, version)
+func GenHmacSha256(data string) (string, error) {
+	version := keyManager.GetLatestVersion()
+	hmacKey, err := getKey(hmacKeyName, version)
+	if err != nil {
+		return "", err
+	}
+	signature := sign.GenHmacSha256(hmacKey, data)
+	return fmt.Sprintf("v%d:%s", version, signature), nil
+}
+
+func VerifyHmacSha256(data string, signature string) (bool, error) {
+	var version int
+	var sig string
+	_, err := fmt.Sscanf(signature, "v%d:%s", &version, &sig)
+	if err != nil {
+		return false, fmt.Errorf("invalid signature format: %w", err)
+	}
+
+	hmacKey, err := getKey(hmacKeyName, version)
+	if err != nil {
+		return false, err
+	}
+	return sign.VerifyHmacSha256(hmacKey, data, sig), nil
+}
+
+func getKey(keyName string, version int) ([]byte, error) {
+	aesKeyHex, err := keyManager.GetSecConfigByKey(keyName, version)
 	if err != nil {
 		return nil, err
 	}
