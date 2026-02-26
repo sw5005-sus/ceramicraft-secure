@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/vault/api"
 )
 
+//go:generate mockgen -source=$GOFILE -destination=mock_$GOFILE -package=$GOPACKAGE
 type IVaultProxy interface {
 	GetVersion(ctx context.Context, engineName, secPath string, version int) (*api.KVSecret, error)
 	GetVersionsAsList(ctx context.Context, engineName, secPath string) ([]api.KVVersionMetadata, error)

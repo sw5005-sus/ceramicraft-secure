@@ -2,7 +2,6 @@ package ceramicraftsecure
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -64,7 +63,7 @@ func GenHmacSha256(data string) (string, error) {
 	return fmt.Sprintf(encTmplate, version, signature), nil
 }
 
-func VerifyHmacSha256(data string, signature string) (bool, error) {
+func VerifyHmacSha256(data, signature string) (bool, error) {
 	var version int
 	var sig string
 	version, sig, err := parseEncryptedData(signature)
@@ -80,42 +79,45 @@ func VerifyHmacSha256(data string, signature string) (bool, error) {
 }
 
 func getKey(keyName string, version int) ([]byte, error) {
-	aesKeyHex, err := keyManager.GetSecConfigByKey(keyName, version)
+	keyHex, err := keyManager.GetSecConfigByKey(keyName, version)
 	if err != nil {
 		return nil, err
 	}
-	aesKeyStr, ok := aesKeyHex.(string)
+	keyStr, ok := keyHex.(string)
 	if !ok {
-		return nil, fmt.Errorf("invalid key format: expected string, got %T", aesKeyHex)
+		return nil, fmt.Errorf("invalid key format: expected string, got %T", keyHex)
 	}
-	aesKey, err := hex.DecodeString(aesKeyStr)
+	key, err := hex.DecodeString(keyStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode AES key from hex: %w", err)
 	}
-	return aesKey, nil
+	if len(key) == 0 {
+		return nil, fmt.Errorf("key is empty after decoding")
+	}
+	return key, nil
 }
 
 func parseEncryptedData(input string) (int, string, error) {
 	if input == "" {
-		return 0, "", errors.New("empty input data")
+		return 0, "", fmt.Errorf("empty input data")
 	}
 
 	// split the input into version and payload using the first dot as the delimiter
 	parts := strings.SplitN(input, ".", 2)
 	if len(parts) != 2 {
-		return 0, "", errors.New("invalid format: missing delimiter or payload")
+		return 0, "", fmt.Errorf("invalid format: missing delimiter or payload")
 	}
 
 	// prefix should be in the format "v1", "v2", etc. We need to extract the version number.
 	versionStr := parts[0]
 	if len(versionStr) < 2 || versionStr[0] != 'v' {
-		return 0, "", errors.New("invalid format: version prefix 'v' not found")
+		return 0, "", fmt.Errorf("invalid format: version prefix 'v' not found")
 	}
 
 	// parse the version number
 	version, err := strconv.Atoi(versionStr[1:])
 	if err != nil {
-		return 0, "", errors.New("invalid version number: " + err.Error())
+		return 0, "", fmt.Errorf("invalid version number: " + err.Error())
 	}
 
 	return version, parts[1], nil

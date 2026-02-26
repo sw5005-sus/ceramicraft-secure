@@ -33,3 +33,6 @@ go.work.sum
 
 #vault policy file
 *.hcl
+
+# OS generated files
+.DS_Store

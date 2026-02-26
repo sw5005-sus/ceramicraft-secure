@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+//go:generate mockgen -source=$GOFILE -destination=mock_$GOFILE -package=$GOPACKAGE
 type IKeyManager interface {
 	GetSecConfigByKey(key string, version int) (interface{}, error)
 	GetLatestVersion() int
@@ -55,7 +56,7 @@ func (k *KeyManager) GetLatestVersion() int {
 }
 
 func (k *KeyManager) GetSecConfigByKey(key string, version int) (interface{}, error) {
-	if version <= 0 {
+	if version <= 0 || version > k.latestVersion {
 		version = k.latestVersion
 	}
 	if _, ok := k.secConfig[version]; ok {
@@ -68,6 +69,9 @@ func (k *KeyManager) GetSecConfigByKey(key string, version int) (interface{}, er
 	ret, err := k.vClientInstance.GetVersion(context.Background(), engineName, secPath, version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read secret version %d from Vault: %w", version, err)
+	}
+	if ret == nil || ret.Data == nil {
+		return nil, fmt.Errorf("secret version %d not found in Vault", version)
 	}
 	return ret.Data[key], nil
 }
@@ -117,8 +121,8 @@ func (k *KeyManager) loadVersions(limit int) ([]int, error) {
 	size := min(len(metadata), limit)
 	metadata = metadata[:size]
 	var versions []int
-	for version := range metadata {
-		versions = append(versions, version)
+	for _, data := range metadata {
+		versions = append(versions, data.Version)
 	}
 	return versions, nil
 }

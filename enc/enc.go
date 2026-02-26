@@ -18,7 +18,7 @@ func GenerateKey() ([]byte, error) {
 }
 
 // Encrypt plainText using AES-GCM with the provided key. The function returns the encrypted data as a base64-encoded string.
-func Encrypt(plainText []byte, key []byte) (string, error) {
+func Encrypt(plainText, key []byte) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err

@@ -2,7 +2,10 @@ module github.com/sw5005-sus/ceramicraft-secure
 
 go 1.23.0
 
-require github.com/hashicorp/vault/api v1.22.0
+require (
+	github.com/hashicorp/vault/api v1.22.0
+	go.uber.org/mock v0.6.0
+)
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect

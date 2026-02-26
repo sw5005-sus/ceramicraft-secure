@@ -2,6 +2,7 @@ package test
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -11,7 +12,11 @@ func LoadEnvFile(filePath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil {
+			fmt.Println("Error closing file:", cerr)
+		}
+	}()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -25,7 +30,10 @@ func LoadEnvFile(filePath string) error {
 		value := strings.TrimSpace(parts[1])
 
 		// set environment variable
-		os.Setenv(key, value)
+		err = os.Setenv(key, value)
+		if err != nil {
+			return err
+		}
 	}
 
 	return scanner.Err()
