@@ -41,11 +41,12 @@ const (
 
 func (k *KeyManager) Init() {
 	k.vClientInstance = GetVaultProxy()
-	tmpConfig, err := k.loadSecConfig()
+	tmpConfig, tmpLatestVer, err := k.loadSecConfig()
 	if err != nil {
 		log.Fatalf("Failed to load secret configuration: %v", err)
 	}
 	k.secConfig = tmpConfig
+	k.latestVersion = tmpLatestVer
 	k.startSecConfigRefreshTimer()
 }
 
@@ -77,33 +78,34 @@ func (k *KeyManager) startSecConfigRefreshTimer() {
 	ticker := time.NewTicker(refreshInterval)
 	go func() {
 		for range ticker.C {
-			tmpConfig, err := k.loadSecConfig()
+			tmpConfig, tmpLatestVer, err := k.loadSecConfig()
 			if err != nil {
 				log.Printf("Failed to refresh secret configuration: %v", err)
 				continue
 			}
 			k.secConfig = tmpConfig
+			k.latestVersion = tmpLatestVer
 		}
 	}()
 }
 
 var versionLimit = 5
 
-func (k *KeyManager) loadSecConfig() (map[int]map[string]interface{}, error) {
+func (k *KeyManager) loadSecConfig() (map[int]map[string]interface{}, int, error) {
 	versions, err := k.loadVersions(versionLimit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load secret versions: %w", err)
+		return nil, 0, fmt.Errorf("failed to load secret versions: %w", err)
 	}
 	ret := make(map[int]map[string]interface{})
 	for _, version := range versions {
 		ret[version] = make(map[string]interface{})
 		secret, err := k.vClientInstance.GetVersion(context.Background(), engineName, secPath, version)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read secret from Vault: %w", err)
+			return nil, 0, fmt.Errorf("failed to read secret from Vault: %w", err)
 		}
 		ret[version] = secret.Data
 	}
-	return ret, nil
+	return ret, versions[0], nil
 }
 
 func (k *KeyManager) loadVersions(limit int) ([]int, error) {
@@ -112,7 +114,6 @@ func (k *KeyManager) loadVersions(limit int) ([]int, error) {
 		return nil, fmt.Errorf("failed to get secret metadata from Vault: %w", err)
 	}
 	slices.Reverse(metadata)
-	k.latestVersion = metadata[0].Version
 	size := min(len(metadata), limit)
 	metadata = metadata[:size]
 	var versions []int

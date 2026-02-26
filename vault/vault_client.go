@@ -100,7 +100,7 @@ func loginAndMaintain(client *api.Client, authConfig *VaultAuthConfig) error {
 }
 
 func manageTokenLifecycle(client *api.Client, authSecret *api.Secret) {
-	// 使用 SDK 提供的 LifetimeWatcher 自动处理续期
+	// renwewal and expiration handling using LifetimeWatcher
 	watcher, err := client.NewLifetimeWatcher(&api.LifetimeWatcherInput{
 		Secret: authSecret,
 	})
@@ -110,7 +110,6 @@ func manageTokenLifecycle(client *api.Client, authSecret *api.Secret) {
 	}
 
 	go watcher.Start()
-	defer watcher.Stop()
 
 	for {
 		select {
