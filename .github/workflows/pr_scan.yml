@@ -1,0 +1,71 @@
+name: SonarQube AND Snyk
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Run Tests with Coverage
+        run: |
+          go test -v -coverprofile=coverage.out $(go list ./... | grep -vE 'vault|test')
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@1a6d90ebcb0e6a6b1d87e37ba693fe453195ae25
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+              -Dsonar.projectKey=sw5005-sus_ceramicraft-secure
+              -Dsonar.sources=.
+              -Dsonar.exclusions=vault/**,test/**,**/*_mock.go,**/mock_*.go
+              -Dsonar.go.coverage.reportPaths=coverage.out
+              -Dsonar.cpd.exclusions=vault/**,test/**
+      - name: SonarCloud Quality Gate check
+        uses: sonarsource/sonarqube-quality-gate-action@cf038b0e0cdecfa9e56c198bbb7d21d751d62c3b
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  snyk:
+    name: Snyk Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      - name: Install Snyk CLI
+        run: npm install -g snyk --ignore-scripts
+      - name: Snyk test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          mkdir -p sarif-reports
+          snyk test --file=go.mod --severity-threshold=high --sarif-file-output=sarif-reports/snyk-ceramicraft-secure.sarif
+      - name: Upload Snyk SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: sarif-reports/snyk-ceramicraft-secure.sarif
+      - name: Snyk monitor
+        run: snyk monitor --file=go.mod
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
