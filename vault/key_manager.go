@@ -36,8 +36,8 @@ func GetKeyManager() IKeyManager {
 }
 
 const (
-	engineName = "secret"
-	secPath    = "ceramicraft/sec_config"
+	engineName = "secrets"
+	secPath    = "secret/ceramicraft/sec_config"
 )
 
 func (k *KeyManager) Init() {
