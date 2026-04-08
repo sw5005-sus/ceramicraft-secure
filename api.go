@@ -117,7 +117,7 @@ func parseEncryptedData(input string) (int, string, error) {
 	// parse the version number
 	version, err := strconv.Atoi(versionStr[1:])
 	if err != nil {
-		return 0, "", fmt.Errorf("invalid version number: " + err.Error())
+		return 0, "", fmt.Errorf("invalid version number: %w", err)
 	}
 
 	return version, parts[1], nil
