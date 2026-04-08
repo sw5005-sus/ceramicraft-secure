@@ -36,3 +36,6 @@ go.work.sum
 
 # OS generated files
 .DS_Store
+
+# vault fiels
+vault-storage/
