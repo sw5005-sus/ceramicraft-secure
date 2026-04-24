@@ -59,7 +59,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           mkdir -p sarif-reports
-          snyk test --file=go.mod --severity-threshold=high --sarif-file-output=sarif-reports/snyk-ceramicraft-secure.sarif
+          snyk test --policy-path=.snyk --file=go.mod --severity-threshold=high --sarif-file-output=sarif-reports/snyk-ceramicraft-secure.sarif
       - name: Upload Snyk SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:
